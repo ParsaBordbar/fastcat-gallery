@@ -1,0 +1,61 @@
+name: Submit a theme (no git needed)
+description: Fill this in and a bot turns it into a pull request for you.
+title: "Theme: "
+labels: [theme]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Easiest: run `fastcat-tui share` and it fills this form in for you.
+        After you submit, a bot checks the theme and opens a pull request. If something is wrong it
+        comments here; edit the issue to fix it and the bot tries again. You'll be credited as the author.
+  - type: input
+    id: code
+    attributes:
+      label: Code
+      description: Short id people will type, e.g. `neon-cat` (2-32 chars of a-z, 0-9, -)
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      description: Up to 40 characters
+    validations:
+      required: true
+  - type: input
+    id: description
+    attributes:
+      label: Description
+      description: One line, up to 200 characters
+  - type: input
+    id: tags
+    attributes:
+      label: Tags
+      description: Up to 6, comma separated, e.g. `cat, neon, minimal`
+  - type: textarea
+    id: config
+    attributes:
+      label: config.jsonc
+      description: Your fastfetch config. Point the logo at `~/.config/fastfetch/ascii.txt`.
+      render: jsonc
+    validations:
+      required: true
+  - type: textarea
+    id: logo
+    attributes:
+      label: ascii.txt
+      description: Your logo. fastfetch colour tags `$1`..`$9` work. Leave empty for a built-in logo.
+      render: text
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Optional. Drag a png or jpg (up to 1 MB) of it running in your terminal into this box.
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: Rights
+      options:
+        - label: I made this theme, or its license lets me share it.
+          required: true

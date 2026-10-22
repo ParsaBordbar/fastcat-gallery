@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>fastcat gallery</title>
+  <meta name="description" content="Community fastfetch themes. Find one you like, then run: fastcat-tui get <code>">
+  <link rel="stylesheet" href="https://unpkg.com/terminal.css@0.7.4/dist/terminal.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>🐈</text></svg>">
+</head>
+<body class="terminal">
+  <div class="container">
+    <div class="terminal-nav">
+      <div class="terminal-logo">
+        <div class="logo terminal-prompt"><a href="./" class="no-style">fastcat gallery</a></div>
+      </div>
+      <nav class="terminal-menu">
+        <ul>
+          <li><a class="menu-item" href="https://github.com/ParsaBordbar/fastcat-gallery#submit-a-theme">submit</a></li>
+          <li><a class="menu-item" href="https://github.com/ParsaBordbar/fastcat-tui">app</a></li>
+          <li><a class="menu-item" href="https://github.com/ParsaBordbar/fastcat-gallery">source</a></li>
+        </ul>
+      </nav>
+    </div>
+
+    <section class="intro">
+      <p>Community themes for <a href="https://github.com/fastfetch-cli/fastfetch">fastfetch</a>.
+        Copy a code, run it in <a href="https://github.com/ParsaBordbar/fastcat-tui">fastcat-tui</a>.</p>
+      <pre class="usage"><span class="dim">$</span> fastcat-tui get <span class="hl">&lt;code&gt;</span> --apply</pre>
+      <p class="dim">In the app: <b>Community gallery</b> → <b>Search</b> (same search as here) or <b>Enter a code</b>.</p>
+    </section>
+
+    <fieldset class="search">
+      <legend>grep</legend>
+      <div class="form-group">
+        <input id="q" type="search" placeholder="name, author, tag, code…" autocomplete="off" aria-label="Search themes">
+      </div>
+      <div id="tags" class="tags" role="group" aria-label="Filter by tag"></div>
+    </fieldset>
+
+    <p id="status" class="dim">loading themes…</p>
+    <div id="grid" class="grid"></div>
+
+    <hr>
+    <footer class="dim">
+      <p>No git? Run <code>fastcat-tui share</code> (in the app: <b>Community gallery → Share my config</b>) or fill in the
+        <a href="https://github.com/ParsaBordbar/fastcat-gallery/issues/new?template=theme.yml">submit form</a>;
+        a bot opens the pull request. Themes belong to their authors.</p>
+    </footer>
+  </div>
+
+  <template id="card">
+    <div class="terminal-card">
+      <header><span class="name"></span></header>
+      <div class="term"><pre class="ascii"></pre><div class="keys"></div></div>
+      <div class="meta">
+        <p class="by dim"></p>
+        <p class="desc"></p>
+        <p class="card-tags"></p>
+        <button class="btn btn-primary btn-ghost btn-block code" type="button" title="Copy install command">
+          <span class="cmd">fastcat-tui get <b></b></span><span class="copied">copied ✓</span>
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

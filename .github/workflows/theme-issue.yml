@@ -1,0 +1,60 @@
+name: theme from issue
+
+# A "Submit a theme" issue becomes a pull request, so contributors never need git.
+# Needs: Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull requests".
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: theme-issue-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  pull-request:
+    if: github.event.issue.state == 'open' && contains(github.event.issue.labels.*.name, 'theme')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - id: theme
+        run: python3 scripts/issue_to_theme.py "$GITHUB_EVENT_PATH"
+
+      - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CODE: ${{ steps.theme.outputs.code }}
+          ISSUE: ${{ github.event.issue.number }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+        run: |
+          branch="theme/issue-$ISSUE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add "themes/$CODE"
+          git commit -m "Add theme $CODE" -m "From #$ISSUE by @$AUTHOR."
+          git push --force origin "$branch"
+          pr=$(gh pr list --head "$branch" --state open --json url -q '.[0].url')
+          if [ -z "$pr" ]; then
+            pr=$(gh pr create --head "$branch" --title "Theme: $CODE" \
+              --body "Theme \`$CODE\` submitted by @$AUTHOR in #$ISSUE. Checked by \`scripts/build.py\`.
+
+          Closes #$ISSUE")
+          fi
+          gh issue comment "$ISSUE" --body "Thanks @$AUTHOR! Your theme passed the checks: $pr
+          Once it's merged anyone can install it with \`fastcat-tui get $CODE\`."
+
+      - name: Explain what went wrong
+        if: failure() && steps.theme.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/theme-error.md"
