@@ -8,6 +8,7 @@ output `code`; on failure it writes the reason to $RUNNER_TEMP/theme-error.md (p
 issue) and exits 1. The issue body is untrusted: nothing from it reaches a shell, and the folder is
 only written after the code passes CODE_RE.
 """
+import http.client
 import json
 import os
 import re
@@ -24,11 +25,29 @@ ATTACHMENT_RE = re.compile(r"https://(?:github\.com/user-attachments/assets/[A-Z
                            r"|(?:private-)?user-images\.githubusercontent\.com/[^\s)\"'<>]+)")
 
 
+def _sections(body: str) -> list[tuple[str, str]]:
+    """Issue-form markdown -> [(label, answer)]. A "### Label" line inside a ``` fence is part of the answer
+    (an ASCII logo can easily have one), not the next heading."""
+    sections, label, lines, fenced = [], None, [], False
+    for line in body.replace("\r\n", "\n").split("\n"):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        m = None if fenced else re.fullmatch(r"### (.+?)[ \t]*", line)
+        if m:
+            if label is not None:
+                sections.append((label, "\n".join(lines)))
+            label, lines = m.group(1), []
+        else:
+            lines.append(line)
+    if label is not None:
+        sections.append((label, "\n".join(lines)))
+    return sections
+
+
 def parse(body: str) -> dict:
     """Issue-form markdown ("### Label" then the answer) -> {field id: answer}."""
     out = {}
-    parts = re.split(r"^### (.+?)[ \t]*$", body.replace("\r\n", "\n"), flags=re.M)
-    for label, value in zip(parts[1::2], parts[2::2]):
+    for label, value in _sections(body):
         key = FIELDS.get(label.strip())
         if not key:
             continue
@@ -48,7 +67,7 @@ def fetch_screenshot(text: str) -> tuple[str, bytes] | None:
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             data = r.read(MAX_SCREENSHOT + 1)
-    except OSError as e:
+    except (OSError, http.client.HTTPException) as e:
         raise Invalid(f"couldn't download the screenshot ({e})") from None
     if len(data) > MAX_SCREENSHOT:
         raise Invalid(f"the screenshot is larger than {MAX_SCREENSHOT // 1024} KB")
@@ -95,10 +114,11 @@ def main() -> int:
     event = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     try:
         code = build_theme(event["issue"])
-    except Invalid as e:
-        msg = f"Couldn't add this theme yet:\n\n> {e}\n\nEdit the issue to fix it and I'll try again."
+    except Exception as e:              # always leave a reason for the issue comment, even for a crash
+        reason = e if isinstance(e, Invalid) else f"the check failed on this input ({type(e).__name__}: {e})"
+        msg = f"Couldn't add this theme yet:\n\n> {reason}\n\nEdit the issue to fix it and I'll try again."
         Path(os.environ.get("RUNNER_TEMP", "."), "theme-error.md").write_text(msg, encoding="utf-8")
-        print("✗", e, file=sys.stderr)
+        print("✗", reason, file=sys.stderr)
         return 1
     with open(os.environ.get("GITHUB_OUTPUT", os.devnull), "a", encoding="utf-8") as out:
         out.write(f"code={code}\n")

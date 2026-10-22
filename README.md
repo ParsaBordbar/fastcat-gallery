@@ -70,8 +70,10 @@ pull request. You can do all of this on github.com: fork, *Add file → Upload f
 - The code (folder name) is what people type: 2-32 characters of `a-z`, `0-9` and `-`.
 - Only `.jsonc`, `.json`, `.txt` and `.png` files plus the optional screenshot; 256 KB per file,
   1.5 MB per theme, no sub-folders.
-- **No `command` modules.** They run programs on the user's machine, so the check rejects them and
-  fastcat-tui refuses to install them.
+- **Nothing that runs programs**: no `command` modules, no `general.preRun`, no `command-raw` logos.
+  They would run on the user's machine, so the check rejects them and fastcat-tui refuses to install them.
+- Text files are UTF-8 without terminal control characters. Strings in `config.jsonc` may use colour
+  codes (`\u001b[31m`) but no other escape sequences.
 - Logo paths have to stay inside the theme folder.
 - Only submit themes you made or whose license lets you share them, and credit the source in `link`.
 

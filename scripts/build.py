@@ -24,8 +24,13 @@ FILE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 ALLOWED_EXT = {".jsonc", ".json", ".txt", ".png"}
 SCREENSHOTS = {"screenshot.png": b"\x89PNG\r\n\x1a\n", "screenshot.jpg": b"\xff\xd8\xff"}
 MAX_FILE, MAX_SCREENSHOT, MAX_THEME = 256 * 1024, 1024 * 1024, 1536 * 1024
-# fastfetch modules that run programs. A theme must never execute anything on the user's machine.
+# A theme must never execute anything on the user's machine: no modules that run programs, no
+# general.preRun, and every logo type except command-raw. fastcat-tui's gallery.py checks the same.
 BLOCKED_MODULES = {"command"}
+SAFE_LOGO_TYPES = {"auto", "builtin", "small", "file", "file-raw", "data", "data-raw", "sixel", "kitty",
+                   "kitty-direct", "kitty-icat", "iterm", "chafa", "raw", "none"}
+CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")   # tab and newline are fine
+SGR_RE = re.compile(r"\x1b\[[0-9;]*m")                      # colour codes are fine in config strings
 CONFIG_DIR_PREFIX = re.compile(r"^(~|\$HOME|\$\{HOME\})/\.config/fastfetch/")
 
 
@@ -91,6 +96,46 @@ class Invalid(Exception):
     pass
 
 
+def _key(d, name: str):
+    """d[name] ignoring case, the way fastfetch reads config keys."""
+    if not isinstance(d, dict):
+        return None
+    return next((v for k, v in d.items() if isinstance(k, str) and k.lower() == name), None)
+
+
+def _strings(x):
+    if isinstance(x, str):
+        yield x
+    elif isinstance(x, dict):
+        for k, v in x.items():
+            yield str(k)
+            yield from _strings(v)
+    elif isinstance(x, list):
+        for v in x:
+            yield from _strings(v)
+
+
+def check_config(cfg) -> list:
+    """Reject configs that make fastfetch run programs or print escapes other than colours. Returns the modules."""
+    if not isinstance(cfg, dict):
+        raise Invalid("config.jsonc must be an object")
+    modules = _key(cfg, "modules") or []
+    if not isinstance(modules, list):
+        raise Invalid("config.jsonc: 'modules' must be a list")
+    for m in modules:
+        t = _key(m, "type") if isinstance(m, dict) else m
+        if isinstance(t, str) and t.lower() in BLOCKED_MODULES:
+            raise Invalid(f"config.jsonc: the '{t}' module runs programs and is not allowed")
+    if _key(_key(cfg, "general"), "prerun") is not None:
+        raise Invalid("config.jsonc: general.preRun runs programs and is not allowed")
+    t = _key(_key(cfg, "logo"), "type")
+    if t is not None and (not isinstance(t, str) or t.lower() not in SAFE_LOGO_TYPES):
+        raise Invalid(f"config.jsonc: logo type {t!r} is not allowed (command-raw runs programs)")
+    if any(CONTROL_RE.search(SGR_RE.sub("", s)) for s in _strings(cfg)):
+        raise Invalid("config.jsonc: strings may use colour codes but no other escape sequences")
+    return modules
+
+
 def _logo_sources(cfg: dict) -> list[str]:
     lg = cfg.get("logo")
     if isinstance(lg, str):
@@ -136,6 +181,13 @@ def validate(folder: Path) -> dict:
                           "plus screenshot.png or screenshot.jpg")
         if size > MAX_FILE:
             raise Invalid(f"{f.name}: larger than {MAX_FILE // 1024} KB")
+        if f.suffix.lower() != ".png":      # fastcat-tui refuses text it could not print safely
+            try:
+                text = f.read_bytes().decode("utf-8")
+            except UnicodeDecodeError:
+                raise Invalid(f"{f.name}: not UTF-8 text") from None
+            if CONTROL_RE.search(text.replace("\r\n", "\n")):
+                raise Invalid(f"{f.name}: contains terminal control characters")
         files.append(f.name)
     if total > MAX_THEME:
         raise Invalid(f"theme is larger than {MAX_THEME // 1024} KB in total")
@@ -166,12 +218,7 @@ def validate(folder: Path) -> dict:
         cfg = jsonc_loads((folder / "config.jsonc").read_text(encoding="utf-8"))
     except ValueError as e:
         raise Invalid(f"config.jsonc: {e}") from None
-    if not isinstance(cfg, dict):
-        raise Invalid("config.jsonc must be an object")
-    for m in cfg.get("modules", []):
-        t = m.get("type") if isinstance(m, dict) else m
-        if isinstance(t, str) and t.lower() in BLOCKED_MODULES:
-            raise Invalid(f"config.jsonc: the '{t}' module runs programs and is not allowed")
+    modules = check_config(cfg)
 
     logo_text = None
     for src in _logo_sources(cfg):
@@ -185,7 +232,7 @@ def validate(folder: Path) -> dict:
 
     lg = cfg.get("logo") if isinstance(cfg.get("logo"), dict) else {}
     lcolors = lg.get("color") if isinstance(lg.get("color"), dict) else {}
-    key_colors = [css_color(m["keyColor"]) for m in cfg.get("modules", [])
+    key_colors = [css_color(m["keyColor"]) for m in modules
                   if isinstance(m, dict) and "keyColor" in m and m.get("type") != "break"]
     return {
         "code": code,
@@ -199,7 +246,7 @@ def validate(folder: Path) -> dict:
         "logo": logo_text,
         "colors": {k: css_color(v) for k, v in lcolors.items() if str(k).isdigit()},
         "keyColors": [c for c in key_colors if c][:12],
-        "lines": sum(1 for m in cfg.get("modules", []) if (m.get("type") if isinstance(m, dict) else m) != "break"),
+        "lines": sum(1 for m in modules if (m.get("type") if isinstance(m, dict) else m) != "break"),
     }
 
 
@@ -212,6 +259,8 @@ def main(argv: list[str]) -> int:
             entries.append(validate(folder))
         except Invalid as e:
             errors.append(f"themes/{folder.name}: {e}")
+        except Exception as e:              # a check that tripped over odd input: still report it, per theme
+            errors.append(f"themes/{folder.name}: could not check it ({type(e).__name__}: {e})")
     for e in errors:
         print("✗", e, file=sys.stderr)
     if errors:

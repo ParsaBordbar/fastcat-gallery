@@ -38,6 +38,7 @@ function renderLogo(pre, text, colors) {
 function card(t) {
   const el = tpl.content.firstElementChild.cloneNode(true);
   const pre = el.querySelector(".ascii");
+  const keys = el.querySelector(".keys");
   if (t.screenshot) {
     // A real screenshot beats the logo-only preview when the author sent one.
     const img = document.createElement("img");
@@ -48,8 +49,8 @@ function card(t) {
     el.querySelector(".term").replaceChildren(img);
   } else if (t.logo) renderLogo(pre, t.logo, t.colors || {});
   else { pre.textContent = "(image or built-in logo)"; pre.classList.add("none"); }
-  const keys = el.querySelector(".keys");
-  (t.keyColors || []).forEach(c => { const i = document.createElement("i"); i.style.background = c; keys.append(i); });
+  // A screenshot replaces the whole preview, key colour strip included.
+  if (!t.screenshot) (t.keyColors || []).forEach(c => { const i = document.createElement("i"); i.style.background = c; keys.append(i); });
   el.querySelector(".name").textContent = `${t.name}`;
   const by = el.querySelector(".by");
   by.textContent = "by " + t.author;
