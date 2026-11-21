@@ -1,0 +1,86 @@
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
+    "logo": {
+        "type": "file",
+        "source": "~/.config/fastfetch/ascii.txt"
+    },
+    "display": {
+        "separator": " ➜ "
+    },
+    "modules": [
+        "break",
+        "break",
+        "break",
+        {
+            "type": "custom",
+            "format": "╭─────────────────────────────────────╮"
+        },
+        {
+            "type": "custom",
+            "format": "{#1}| The Dragon Sleeps Between Commands! |{#}"
+        },
+        {
+            "type": "custom",
+            "format": "╰─────────────────────────────────────╯"
+        },
+        "break",
+        {
+            "type": "os",
+            "key": "OS     ",
+            "format": "{name} {version-id}"
+        },
+        "break",
+        {
+            "type": "kernel",
+            "key": "Kernel ",
+            "format": "{release}"
+        },
+        "break",
+        {
+            "type": "shell",
+            "key": "Shell  ",
+            "format": "{pretty-name}"
+        },
+        "break",
+        {
+            "type": "cpu",
+            "key": "CPU    ",
+            "format": "{name} ({cores-logical}c)",
+            "temp": false
+        },
+        "break",
+        {
+            "type": "memory",
+            "key": "RAM    ",
+            "format": "{percentage-bar}  {used} / {total}",
+            "percent": {
+                "type": 2
+            }
+        },
+        "break",
+        {
+            "type": "swap",
+            "key": "Swap   ",
+            "format": "{percentage-bar}  {used} / {total}",
+            "percent": {
+                "type": 2
+            }
+        },
+        "break",
+        {
+            "type": "disk",
+            "key": "Disk   ",
+            "folders": "/",
+            "format": "{size-percentage-bar}  {size-used} / {size-total}",
+            "percent": {
+                "type": 2
+            }
+        },
+        "break",
+        {
+            "type": "uptime",
+            "key": "Uptime ",
+            "format": "{days}d {hours}h {minutes}m"
+        }
+    ]
+}
